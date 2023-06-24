@@ -1,7 +1,6 @@
 import logging
 from enum import Enum
 from time import monotonic
-from pprint import pprint
 
 import aiohttp
 import asyncio
@@ -73,7 +72,7 @@ async def process_article(session, morph, charged_words, url, processed_articles
     processed_articles.append(results)
 
 
-async def main():
+async def main(urls):
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO
@@ -86,12 +85,9 @@ async def main():
         charged_words = [word.replace('\n', '') for word in await f.readlines()]
     async with aiohttp.ClientSession() as session:
         async with create_task_group() as tg:
-            for url in TEST_ARTICLES:
+            for url in urls:
                 tg.start_soon(
                     process_article,
                     *(session, morph, charged_words, url, processed_articles)
                 )
-    pprint(processed_articles)
-
-
-asyncio.run(main())
+    return processed_articles
