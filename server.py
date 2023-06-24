@@ -1,4 +1,6 @@
+import os
 import logging
+from functools import partial
 
 import aiohttp
 import pymorphy2
@@ -6,6 +8,7 @@ import aiofiles
 from anyio import create_task_group
 from aiohttp import web, web_request, web_response
 from pytest_asyncio.plugin import pytest
+from environs import Env
 
 from main import main, process_article
 
@@ -21,7 +24,8 @@ async def test_process_article():
         'https://inosmi.ru/20190629/245384784.html': 'OK',
         }
     morph = pymorphy2.MorphAnalyzer()
-    async with aiofiles.open('charged_dict/positive_words.txt', 'r') as f:
+    path_to_dict = os.path.join('charged_dict', 'positive_words.txt')
+    async with aiofiles.open(path_to_dict, 'r') as f:
         charged_words = [word.replace('\n', '') for word in await f.readlines()]
     processed_articles = []
     async with aiohttp.ClientSession() as session:
@@ -48,7 +52,7 @@ async def test_process_article():
         assert processed_article['status'] == test_urls[processed_article['url']]
 
 
-async def handle(request: web_request.Request) -> web_response.Response:
+async def handle(request: web_request.Request, path_to_dict: str) -> web_response.Response:
     urls = request.query.get('urls')
     if urls:
         urls = urls.split(',')
@@ -58,7 +62,7 @@ async def handle(request: web_request.Request) -> web_response.Response:
                 data={'error': 'too many urls in request, should be 10 or less'},
                 status=400
             )
-        processed_articles = await main(urls)
+        processed_articles = await main(urls, path_to_dict)
         return web.json_response(data={'urls': processed_articles})
 
     logger.info('Невалидный запрос')
@@ -66,13 +70,18 @@ async def handle(request: web_request.Request) -> web_response.Response:
 
 
 def start_server():
+    env = Env()
+    env.read_env()
+    path_to_dict = env.str(
+        'PATH_TO_DICT', os.path.join('charged_dict', 'positive_words.txt')
+    )
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO
     )
     logger.setLevel(logging.INFO)
     app = web.Application()
-    app.add_routes([web.get('/', handle)])
+    app.add_routes([web.get('/', partial(handle, path_to_dict=path_to_dict))])
     logger.info('Сервер запущен')
     web.run_app(app)
 

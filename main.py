@@ -68,7 +68,7 @@ async def process_article(session: aiohttp.client.ClientSession,
     processed_articles.append(results)
 
 
-async def main(urls: list[str]) -> dict:
+async def main(urls: list[str], path_to_dict: str) -> dict:
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO
@@ -76,7 +76,7 @@ async def main(urls: list[str]) -> dict:
     logger.setLevel(logging.INFO)
     processed_articles = []
     morph = pymorphy2.MorphAnalyzer()
-    async with aiofiles.open('charged_dict/positive_words.txt', 'r') as f:
+    async with aiofiles.open(path_to_dict, 'r') as f:
         charged_words = [word.replace('\n', '') for word in await f.readlines()]
     async with aiohttp.ClientSession() as session:
         async with create_task_group() as tg:
