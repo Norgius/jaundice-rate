@@ -4,7 +4,7 @@ import aiohttp
 import pymorphy2
 import aiofiles
 from anyio import create_task_group
-from aiohttp import web, web_request
+from aiohttp import web, web_request, web_response
 from pytest_asyncio.plugin import pytest
 
 from main import main, process_article
@@ -34,7 +34,7 @@ async def test_process_article():
                         charged_words,
                         test_url,
                         processed_articles,
-                        0.01,
+                        0.03,
                     )
                 else:
                     tg.start_soon(
@@ -48,18 +48,20 @@ async def test_process_article():
         assert processed_article['status'] == test_urls[processed_article['url']]
 
 
-async def handle(request: web_request.Request):
+async def handle(request: web_request.Request) -> web_response.Response:
     urls = request.query.get('urls')
     if urls:
         urls = urls.split(',')
         if len(urls) > 10:
+            logger.info('Слишком много urls в запросе')
             return web.json_response(
                 data={'error': 'too many urls in request, should be 10 or less'},
                 status=400
             )
         processed_articles = await main(urls)
         return web.json_response(data={'urls': processed_articles})
-    logger.warning('Невалидный запрос')
+
+    logger.info('Невалидный запрос')
     return web.json_response(data={'error': 'invalid request'}, status=400)
 
 

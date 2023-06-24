@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Union
 from enum import Enum
 from time import monotonic
 
@@ -23,13 +24,18 @@ class ProcessingStatus(Enum):
     TIMEOUT = 'TIMEOUT'
 
 
-async def fetch(session: aiohttp.ClientSession, url: str):
+async def fetch(session: aiohttp.ClientSession, url: str) -> str:
     async with session.get(url) as response:
         response.raise_for_status()
         return await response.text()
 
 
-async def process_article(session, morph, charged_words, url, processed_articles, timeout=3):
+async def process_article(session: aiohttp.client.ClientSession,
+                          morph: pymorphy2.analyzer.MorphAnalyzer,
+                          charged_words: list[str],
+                          url: str,
+                          processed_articles: list,
+                          timeout: Union[int, float] = 3):
     try:
         async with async_timeout.timeout(timeout):
             html = await fetch(session, url)
@@ -62,7 +68,7 @@ async def process_article(session, morph, charged_words, url, processed_articles
     processed_articles.append(results)
 
 
-async def main(urls):
+async def main(urls: list[str]) -> dict:
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO
