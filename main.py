@@ -1,12 +1,12 @@
+import asyncio
 import logging
 from enum import Enum
 from time import monotonic
 
 import aiohttp
-import asyncio
 import pymorphy2
 import aiofiles
-from async_timeout import timeout
+import async_timeout
 from anyio import create_task_group
 
 from adapters.exceptions import ArticleNotFound
@@ -14,16 +14,6 @@ from adapters.inosmi_ru import sanitize
 from text_tools import split_by_words, calculate_jaundice_rate
 
 logger = logging.getLogger(__name__)
-
-TEST_ARTICLES = [
-        'https://inosmi.ru/20230619/raketa-263752174.html',
-        'https://inosmi.ru/20190629/245384784.html',
-        'https://inosmi.ru/20221231/nauka-259263272.html',
-        'http://example.com',
-        'https://inosmi.ru/20230611/antropologiya-263558745.html',
-        'https://inosmi.ru/20230521/egipet-262991012.html',
-        'https://inosmi.ru/20230508/mozg-262641035.html',
-]
 
 
 class ProcessingStatus(Enum):
@@ -39,9 +29,9 @@ async def fetch(session: aiohttp.ClientSession, url: str):
         return await response.text()
 
 
-async def process_article(session, morph, charged_words, url, processed_articles):
+async def process_article(session, morph, charged_words, url, processed_articles, timeout=3):
     try:
-        async with timeout(3):
+        async with async_timeout.timeout(timeout):
             html = await fetch(session, url)
         text = sanitize(html, True)
 
@@ -78,7 +68,6 @@ async def main(urls):
         level=logging.INFO
     )
     logger.setLevel(logging.INFO)
-
     processed_articles = []
     morph = pymorphy2.MorphAnalyzer()
     async with aiofiles.open('charged_dict/positive_words.txt', 'r') as f:
@@ -88,6 +77,6 @@ async def main(urls):
             for url in urls:
                 tg.start_soon(
                     process_article,
-                    *(session, morph, charged_words, url, processed_articles)
+                    *(session, morph, charged_words, url, processed_articles,)
                 )
     return processed_articles
